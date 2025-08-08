@@ -93,6 +93,7 @@ npx nx serve emr-frontend
 Notes
 - The provided `start-dev.sh` / `start-servers.sh` assume macOS (`brew`) and a ready Nx workspace. Adapt for Linux or run services manually.
 - Use PostgreSQL 14+.
+- Windows: use `./start-dev.ps1` (PowerShell) to run with Dockerized PostgreSQL.
 
 ## Packages
 - `@emr/ui`: Shared MUI-based components (e.g., `MedicalCard`, `RoleBadge`, `VitalsChart`)
