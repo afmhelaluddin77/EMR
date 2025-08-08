@@ -1,0 +1,14 @@
+{
+  "name": "@emr/eslint-config-custom",
+  "version": "0.0.1",
+  "main": "index.js",
+  "dependencies": {
+    "@nx/eslint-plugin": "^21.3.11",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsx-a11y": "^6.8.0",
+    "eslint-plugin-react": "^7.34.0",
+    "eslint-plugin-react-hooks": "^4.6.0"
+  }
+}
