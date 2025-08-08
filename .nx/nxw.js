@@ -62,7 +62,6 @@ function performInstallation(currentInstallation, nxJson) {
         cp.execSync('npm i', {
             cwd: path.dirname(installationPath),
             stdio: 'inherit',
-            windowsHide: false,
         });
     }
     catch (e) {
