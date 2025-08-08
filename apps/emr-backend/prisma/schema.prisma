@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  email         String   @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          UserRole
+  department    String?
+  specialization String?
+  licenseNumber String?
+  phoneNumber   String?
+  isActive      Boolean  @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  sessions      AuthSession[]
+  auditLogs     AuditLog[]
+  patients      Patient[] @relation("PatientCreatedBy")
+  appointments  Appointment[] @relation("AppointmentCreatedBy")
+  examinations  ClinicalExamination[] @relation("ExaminationExaminer")
+  prescriptions Prescription[] @relation("PrescriptionPrescriber")
+  vitals        VitalSigns[] @relation("VitalsRecordedBy")
+
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+  NURSE
+  PHARMACIST
+  LAB_TECHNICIAN
+  RECEPTIONIST
+  BILLING_ADMIN
+  PATIENT
+}
+
+// Authentication
+model AuthSession {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  refreshToken String   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+// Audit Trail
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  action     String
+  resource   String
+  resourceId String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// Patient Management
+model Patient {
+  id                String   @id @default(cuid())
+  identifier        String   @unique
+  active            Boolean  @default(true)
+  firstName         String
+  lastName          String
+  gender            Gender
+  birthDate         DateTime
+  phoneNumber       String?
+  email             String?
+  address           Json?
+  emergencyContact  Json?
+  insurance         Json?
+  allergies         String[]
+  chronicConditions String[]
+  registrationDate  DateTime @default(now())
+  lastVisitDate     DateTime?
+  nextAppointmentDate DateTime?
+  createdBy         String
+
+  // Relations
+  createdByUser     User     @relation("PatientCreatedBy", fields: [createdBy], references: [id])
+  appointments      Appointment[]
+  examinations      ClinicalExamination[]
+  prescriptions     Prescription[]
+  vitals            VitalSigns[]
+
+  @@map("patients")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  UNKNOWN
+}
+
+// Appointment Management
+model Appointment {
+  id                String           @id @default(cuid())
+  identifier        String           @unique
+  status            AppointmentStatus
+  patientId         String
+  doctorId          String?
+  department        String
+  room              String?
+  startTime         DateTime
+  endTime           DateTime
+  description       String?
+  notes             String?
+  followUpRequired  Boolean          @default(false)
+  followUpDate      DateTime?
+  billingStatus     BillingStatus    @default(PENDING)
+  insuranceInfo     Json?
+  createdBy         String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  patient           Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdByUser     User             @relation("AppointmentCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  PROPOSED
+  PENDING
+  BOOKED
+  ARRIVED
+  FULFILLED
+  CANCELLED
+  NOSHOW
+  ENTERED_IN_ERROR
+  CHECKED_IN
+  WAITLIST
+}
+
+enum BillingStatus {
+  PENDING
+  BILLED
+  PAID
+  CANCELLED
+}
+
+// Clinical Examinations
+model ClinicalExamination {
+  id              String                @id @default(cuid())
+  patientId       String
+  encounterId     String
+  dateTime        DateTime              @default(now())
+  examiner        String
+  examinationType ExaminationType
+  findings        Json
+  impression      String
+  recommendations String[]
+  nextFollowUp    DateTime?
+
+  // Relations
+  patient         Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  examinerUser    User                  @relation("ExaminationExaminer", fields: [examiner], references: [id])
+
+  @@map("clinical_examinations")
+}
+
+enum ExaminationType {
+  GENERAL
+  CARDIOVASCULAR
+  RESPIRATORY
+  GASTROINTESTINAL
+  NEUROLOGICAL
+  MUSCULOSKELETAL
+  DERMATOLOGICAL
+}
+
+// Vital Signs
+model VitalSigns {
+  id              String   @id @default(cuid())
+  patientId       String
+  dateTime        DateTime @default(now())
+  temperature     Json?
+  bloodPressure   Json?
+  heartRate       Json?
+  respiratoryRate Json?
+  oxygenSaturation Json?
+  height          Json?
+  weight          Json?
+  bmi             Float?
+  notes           String?
+  recordedBy      String
+
+  // Relations
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedByUser  User     @relation("VitalsRecordedBy", fields: [recordedBy], references: [id])
+
+  @@map("vital_signs")
+}
+
+// Medicine Database
+model Medicine {
+  id                String   @id @default(cuid())
+  name              String
+  genericName       String?
+  brandName         String?
+  strength          String?
+  form              MedicineForm
+  route             MedicineRoute
+  category          String
+  therapeuticClass  String
+  indications       String[]
+  contraindications String[]
+  sideEffects       String[]
+  interactions      String[]
+  dosage            Json
+  precautions       String[]
+  pregnancyCategory PregnancyCategory?
+  breastfeeding     BreastfeedingStatus?
+  storage           String
+  manufacturer      String
+  price             Json?
+  availability      MedicineAvailability @default(AVAILABLE)
+  lastUpdated       DateTime @default(now())
+
+  @@map("medicines")
+}
+
+enum MedicineForm {
+  TABLET
+  CAPSULE
+  LIQUID
+  INJECTION
+  CREAM
+  OINTMENT
+  DROPS
+  INHALER
+  SUPPOSITORY
+}
+
+enum MedicineRoute {
+  ORAL
+  INTRAVENOUS
+  INTRAMUSCULAR
+  SUBCUTANEOUS
+  TOPICAL
+  INHALATION
+  RECTAL
+  VAGINAL
+}
+
+enum PregnancyCategory {
+  A
+  B
+  C
+  D
+  X
+}
+
+enum BreastfeedingStatus {
+  SAFE
+  CAUTION
+  AVOID
+}
+
+enum MedicineAvailability {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+// Prescriptions
+model Prescription {
+  id            String   @id @default(cuid())
+  patientId     String
+  prescriberId  String
+  datePrescribed DateTime @default(now())
+  medications   Json
+  diagnosis     String[]
+  instructions  String
+  duration      String
+  refills       Int?
+  status        PrescriptionStatus @default(ACTIVE)
+  pharmacy      String?
+  notes         String?
+  followUpDate  DateTime?
+
+  // Relations
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  prescriber    User     @relation("PrescriptionPrescriber", fields: [prescriberId], references: [id])
+
+  @@map("prescriptions")
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+// System Settings
+model SystemSetting {
+  id          String   @id @default(cuid())
+  category    String
+  key         String   @unique
+  value       String
+  description String?
+  isActive    Boolean  @default(true)
+  updatedBy   String
+  updatedAt   DateTime @default(now())
+
+  @@map("system_settings")
+}
+
+// Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
